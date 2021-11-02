@@ -1,0 +1,26 @@
+#See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+WORKDIR /src
+COPY ["API/Classfy.Unified.API/Classfy.Unified.API.csproj", "API/Classfy.Unified.API/"]
+COPY ["Modules/Users/Classfy.Users.Infra.Persistence.EF/Classfy.Users.Infra.Persistence.EF.csproj", "Modules/Users/Classfy.Users.Infra.Persistence.EF/"]
+COPY ["Modules/Users/Classfy.Users.Domain/Classfy.Users.Domain.csproj", "Modules/Users/Classfy.Users.Domain/"]
+COPY ["BuildingBlocks/Domain/Classfy.BuildingBlocks.Domain/Classfy.BuildingBlocks.Domain.csproj", "BuildingBlocks/Domain/Classfy.BuildingBlocks.Domain/"]
+COPY ["Modules/Users/Classfy.Users.Application/Classfy.Users.Application.csproj", "Modules/Users/Classfy.Users.Application/"]
+RUN dotnet restore "API/Classfy.Unified.API/Classfy.Unified.API.csproj"
+COPY . .
+WORKDIR "/src/API/Classfy.Unified.API"
+RUN dotnet build "Classfy.Unified.API.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "Classfy.Unified.API.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Classfy.Unified.API.dll"]
